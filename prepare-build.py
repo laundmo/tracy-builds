@@ -251,6 +251,8 @@ def commit_and_push(branch, tracy_tag, push=True):
 
     if push:
         print("\n=== Pushing to remote ===")
+        remote = run_command(["git", "remote", "-v"], capture=True)
+        print(remote)
         run_command(["git", "push", "origin", branch])
     else:
         print("\n=== Skipping push (--no-push specified) ===")

@@ -28,6 +28,7 @@ jobs:
       - name: Configure git with custom token
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          PYTHONUNBUFFERED: 1
         run: |
           git remote set-url origin https://${GH_TOKEN}@github.com/${{ github.repository }}.git
 
