@@ -1,0 +1,60 @@
+create-release:
+  needs:
+  - placeholder
+  runs-on: ubuntu-latest
+  permissions:
+    contents: write
+  steps:
+  - name: Download all artifacts
+    uses: actions/download-artifact@v4
+    with:
+      path: artifacts
+  - name: List downloaded artifacts
+    run: ls -R artifacts/
+  - name: Package Windows artifacts
+    run: |-
+      if [ -d "artifacts/windows-latest" ]; then
+        cd artifacts/windows-latest
+        zip -r ../../tracy-windows.zip ./*
+        cd ../..
+        echo "Created tracy-windows.zip"
+      else
+        echo "No Windows artifacts found"
+      fi
+  - name: Package macOS artifacts
+    run: |-
+      if [ -d "artifacts/macos-15" ]; then
+        tar czf tracy-macos.tar.gz -C artifacts macos-15
+        echo "Created tracy-macos.tar.gz"
+      else
+        echo "No macOS artifacts found"
+      fi
+  - name: Package Linux artifacts
+    run: |-
+      if [ -d "artifacts/arch-linux" ]; then
+        tar czf tracy-linux.tar.gz -C artifacts arch-linux
+        echo "Created tracy-linux.tar.gz"
+      else
+        echo "No Linux artifacts found"
+      fi
+  - name: List created packages
+    run: ls -lh *.7z *.tar.gz 2>/dev/null || echo "No packages created"
+  - name: Determine tag name
+    id: tag
+    run: |
+      TAG="${{ github.event.inputs.tracy_tag }}"
+      if [ -z "$TAG" ]; then
+        TAG="${{ github.ref_name }}"
+        TAG="${TAG#build-}"
+      fi
+      echo "name=$TAG" >> $GITHUB_OUTPUT
+  - name: Create Release
+    uses: softprops/action-gh-release@v2
+    with:
+      tag_name: ${{ steps.tag.outputs.name }}
+      name: Tracy ${{ steps.tag.outputs.name }}
+      body: Prebuilt Tracy binaries for ${{ steps.tag.outputs.name }} from https://github.com/wolfpld/tracy
+      files: |-
+        *.zip
+        *.tar.gz
+      fail_on_unmatched_files: true
