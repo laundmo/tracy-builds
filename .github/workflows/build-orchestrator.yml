@@ -21,18 +21,22 @@ jobs:
 
       - name: Checkout builder repo
         uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.head_ref }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       
-      - name: Configure git with custom token
-        env:
-          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
-          PYTHONUNBUFFERED: 1
-        run: |
-          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/tracy-builds/tracy-builds.git
+      # - name: Configure git with custom token
+      #   env:
+      #     GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+      #   run: |
+      #     git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/tracy-builds/tracy-builds.git
 
       - name: Run prepare-build script
+        env:
+          PYTHONUNBUFFERED: 1
         run: |
           uv run prepare-build.py "${{ inputs.tracy_tag }}"
           sleep 5
