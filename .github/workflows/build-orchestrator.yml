@@ -33,7 +33,7 @@ jobs:
           PYTHONUNBUFFERED: 1
         run: |
           uv run prepare-build.py "${{ inputs.tracy_tag }}"
-          sleep 5
+          sleep 25
 
       - name: Dispatch build workflow
         uses: benc-uk/workflow-dispatch@v1
