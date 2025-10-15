@@ -30,7 +30,7 @@ jobs:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           PYTHONUNBUFFERED: 1
         run: |
-          git remote set-url origin https://${GH_TOKEN}@github.com/${{ github.repository }}.git
+          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/owner/repo.git
 
       - name: Run prepare-build script
         run: |
