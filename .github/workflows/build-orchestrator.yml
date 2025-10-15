@@ -29,7 +29,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
-          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git
+          git remote set-url origin https://${GH_TOKEN}@github.com/${{ github.repository }}.git
 
       - name: Run prepare-build script
         run: |
