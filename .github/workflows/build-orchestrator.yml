@@ -28,12 +28,6 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       
-      # - name: Configure git with custom token
-      #   env:
-      #     GH_TOKEN: ${{ steps.generate-token.outputs.token }}
-      #   run: |
-      #     git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/tracy-builds/tracy-builds.git
-
       - name: Run prepare-build script
         env:
           PYTHONUNBUFFERED: 1
@@ -45,6 +39,6 @@ jobs:
         uses: benc-uk/workflow-dispatch@v1
         with:
           workflow: build-combined.yml
-          ref: ${{ env.BRANCH }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          inputs: '{"tracy_tag": "${{ env.TAG }}"}'
+          ref: build-${{ inputs.tracy_tag }}
+          token: ${{ steps.generate-token.outputs.token }}
+          inputs: '{"tracy_tag": "${{ inputs.tracy_tag }}"}'
