@@ -85,21 +85,89 @@ def fetch_tracy_workflows(tag):
     return fetched
 
 
-def modify_job_checkouts(job_config, tracy_tag):
-    """Modify checkout steps in job to use Tracy repo."""
+def modify_job(job_config, tracy_tag, file):
+    """Modify jobs."""
     if "steps" not in job_config:
         return
 
+    steps = []
     for step in job_config["steps"]:
-        if "uses" in step and "checkout" in step["uses"]:
-            step["with"] = {
-                "repository": "wolfpld/tracy",
-                "ref": f"${{{{ github.event.inputs.tracy_tag || '{tracy_tag}' }}}}",
+        if "uses" in step:
+            # point checkout at tracy repo and tag
+            if "checkout" in step["uses"]:
+                step["with"] = {
+                    "repository": "wolfpld/tracy",
+                    "ref": f"${{{{ github.event.inputs.tracy_tag || '{tracy_tag}' }}}}",
+                }
+
+            # add build flags matrix to upload
+            if "actions/upload-artifact" in step["uses"]:
+                if file == "build.yml":
+                    step["with"]["name"] = (
+                        "${{ matrix.os }}${{ matrix.build_flags.postfix }}"
+                    )
+                else:
+                    step["with"]["name"] = "arch-linux${{ matrix.build_flags.postfix }}"
+
+        if "run" in step:
+            # tracy uses ${{ github.sha }} to pass git ref to cmake
+            # luckily, cmake calls "git log <ref>" so we can just pass the tag
+            if "${{ github.sha }}" in step["run"]:
+                step["run"] = step["run"].replace("${{ github.sha }}", f'"{tracy_tag}"')
+
+            # add glfw dependency for -DLEGACY=1 builds
+            if file == "linux.yml":
+                if "pacman" in step["run"]:
+                    step["run"] = step["run"].replace("cmake", "cmake glfw")
+
+            # inject matrix args into meson and cmake
+            if "meson" in step["run"]:
+                step["run"] = step["run"].replace(
+                    "meson setup -D", "meson setup ${{ matrix.build_flags.meson }} -D"
+                )
+            if "cmake -B" in step["run"]:
+                step["run"] = step["run"].replace(
+                    " -DCMAKE_BUILD_TYPE=Release",
+                    " ${{ matrix.build_flags.cmake }} -DCMAKE_BUILD_TYPE=Release",
+                )
+
+        # remove Test builds
+        if (
+            "name" in step
+            and "Test" in step["name"]
+            and "run" in step
+            and "test/build" in step["run"]
+        ):
+            continue
+        steps.append(step)
+
+    # use new, cleaned, steps
+    job_config["steps"] = steps
+
+    # add build_flags matrix
+    if "strategy" not in job_config:
+        job_config["strategy"] = {}
+
+    if "matrix" not in job_config["strategy"]:
+        job_config["strategy"]["matrix"] = {}
+
+    job_config["strategy"]["matrix"]["build_flags"] = [
+        {"cmake": "-DTRACY_LTO=ON", "meson": "", "postfix": "-lto"},
+        {
+            "cmake": "-DTRACY_ON_DEMAND=ON -DTRACY_LTO=ON",
+            "meson": "-Dtracy:on_demand=true",
+            "postfix": "-ondemand-lto",
+        },
+    ]
+
+    if file == "linux.yml":
+        job_config["strategy"]["matrix"]["build_flags"].append(
+            {
+                "cmake": "-DLEGACY=ON -DTRACY_LTO=ON",
+                "meson": "",
+                "postfix": "-x11-lto",
             }
-        # tracy uses ${{ github.sha }} to pass git ref to cmake
-        # luckily, cmake calls "git log <ref>" so we can just pass the tag
-        if "run" in step and "${{ github.sha }}" in step["run"]:
-            step["run"] = step["run"].replace("${{ github.sha }}", f'"{tracy_tag}"')
+        )
 
 
 def generate_combined_workflow(workflows, tracy_tag):
@@ -122,8 +190,12 @@ def generate_combined_workflow(workflows, tracy_tag):
         if "jobs" in build_wf:
             for job_name, job_config in build_wf["jobs"].items():
                 print(f"  Adding job: tracy-{job_name}")
-                modify_job_checkouts(job_config, tracy_tag)
+                modify_job(job_config, tracy_tag, "build.yml")
                 combined["jobs"][f"tracy-{job_name}"] = job_config
+                if "env" in build_wf:
+                    if "env" not in combined["jobs"][f"tracy-{job_name}"]:
+                        combined["jobs"][f"tracy-{job_name}"]["env"] = {}
+                    combined["jobs"][f"tracy-{job_name}"]["env"].update(build_wf["env"])
 
     # Process linux.yml
     if "linux.yml" in workflows:
@@ -134,8 +206,14 @@ def generate_combined_workflow(workflows, tracy_tag):
         if "jobs" in linux_wf:
             for job_name, job_config in linux_wf["jobs"].items():
                 print(f"  Adding job: tracy-linux-{job_name}")
-                modify_job_checkouts(job_config, tracy_tag)
+                modify_job(job_config, tracy_tag, "linux.yml")
                 combined["jobs"][f"tracy-linux-{job_name}"] = job_config
+                if "env" in linux_wf:
+                    if "env" not in combined["jobs"][f"tracy-linux-{job_name}"]:
+                        combined["jobs"][f"tracy-linux-{job_name}"]["env"] = {}
+                    combined["jobs"][f"tracy-linux-{job_name}"]["env"].update(
+                        linux_wf["env"]
+                    )
 
     # Add release job
     print("Adding release job...")

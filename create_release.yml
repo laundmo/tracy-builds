@@ -11,32 +11,25 @@ create-release:
       path: artifacts
   - name: List downloaded artifacts
     run: ls -R artifacts/
-  - name: Package Windows artifacts
+  - name: Package all artifacts
     run: |-
-      if [ -d "artifacts/windows-latest" ]; then
-        cd artifacts/windows-latest
-        zip -r ../../tracy-windows.zip ./*
-        cd ../..
-        echo "Created tracy-windows.zip"
-      else
-        echo "No Windows artifacts found"
-      fi
-  - name: Package macOS artifacts
-    run: |-
-      if [ -d "artifacts/macos-15" ]; then
-        tar czf tracy-macos.tar.gz -C artifacts macos-15
-        echo "Created tracy-macos.tar.gz"
-      else
-        echo "No macOS artifacts found"
-      fi
-  - name: Package Linux artifacts
-    run: |-
-      if [ -d "artifacts/arch-linux" ]; then
-        tar czf tracy-linux.tar.gz -C artifacts arch-linux
-        echo "Created tracy-linux.tar.gz"
-      else
-        echo "No Linux artifacts found"
-      fi
+      cd artifacts
+      for dir in */; do
+        dirname="${dir%/}"
+        echo "Processing: $dirname"
+        
+        case "$dirname" in
+          windows-*)
+            (cd "$dirname" && zip -r "../../tracy-${dirname}.zip" ./* )
+            echo "Created tracy-${dirname}.zip"
+            ;;
+          *)
+            tar czf "../tracy-${dirname}.tar.gz" "$dirname"
+            echo "Created tracy-${dirname}.tar.gz"
+            ;;
+        esac
+      done
+      cd ..
   - name: List created packages
     run: ls -lh *.zip *.tar.gz 2>/dev/null || echo "No packages created"
   - name: Create Release
