@@ -99,7 +99,7 @@ def modify_job_checkouts(job_config, tracy_tag):
         # tracy uses ${{ github.sha }} to pass git ref to cmake
         # luckily, cmake calls "git log <ref>" so we can just pass the tag
         if "run" in step and "${{ github.sha }}" in step["run"]:
-            step["run"] = step["run"].replace("${{ github.sha }}", tracy_tag)
+            step["run"] = step["run"].replace("${{ github.sha }}", f'"{tracy_tag}"')
 
 
 def generate_combined_workflow(workflows, tracy_tag):
