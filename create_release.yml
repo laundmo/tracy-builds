@@ -13,8 +13,8 @@ create-release:
     run: ls -R artifacts/
   - name: Package Windows artifacts
     run: |-
-      if [ -d "artifacts/tracy-windows" ]; then
-        cd artifacts/tracy-windows
+      if [ -d "artifacts/windows-latest" ]; then
+        cd artifacts/windows-latest
         zip -r ../../tracy-windows.zip ./*
         cd ../..
         echo "Created tracy-windows.zip"
@@ -23,16 +23,16 @@ create-release:
       fi
   - name: Package macOS artifacts
     run: |-
-      if [ -d "artifacts/tracy-macos" ]; then
-        tar czf tracy-macos.tar.gz -C artifacts tracy-macos
+      if [ -d "artifacts/macos-15" ]; then
+        tar czf tracy-macos.tar.gz -C artifacts macos-15
         echo "Created tracy-macos.tar.gz"
       else
         echo "No macOS artifacts found"
       fi
   - name: Package Linux artifacts
     run: |-
-      if [ -d "artifacts/tracy-linux" ]; then
-        tar czf tracy-linux.tar.gz -C artifacts tracy-linux
+      if [ -d "artifacts/arch-linux" ]; then
+        tar czf tracy-linux.tar.gz -C artifacts arch-linux
         echo "Created tracy-linux.tar.gz"
       else
         echo "No Linux artifacts found"

@@ -96,52 +96,10 @@ def modify_job_checkouts(job_config, tracy_tag):
                 "repository": "wolfpld/tracy",
                 "ref": f"${{{{ github.event.inputs.tracy_tag || '{tracy_tag}' }}}}",
             }
-
-
-def add_artifact_upload(job_config, job_name):
-    """Add artifact upload step if not present."""
-    if "steps" not in job_config:
-        return
-
-    # Check if upload already exists
-    has_upload = any(
-        "upload-artifact" in str(step.get("uses", "")) for step in job_config["steps"]
-    )
-
-    if has_upload:
-        return
-
-    # Determine artifact name and path based on job
-    os_type = job_config.get("runs-on", "")
-    matrix = job_config.get("strategy", {}).get("matrix", {})
-
-    artifact_name = None
-    artifact_path = None
-
-    if (
-        "windows" in str(os_type).lower()
-        or "windows" in str(matrix.get("os", [])).lower()
-    ):
-        artifact_name = "tracy-windows"
-        artifact_path = "**/*.exe"
-    elif (
-        "macos" in str(os_type).lower() or "macos" in str(matrix.get("os", [])).lower()
-    ):
-        artifact_name = "tracy-macos"
-        artifact_path = "**/Tracy-release\n**/capture-release\n**/csvexport-release\n**/import-chrome-release"
-    elif "linux" in job_name.lower() or "container" in job_config:
-        artifact_name = "tracy-linux"
-        artifact_path = "**/Tracy-release\n**/capture-release\n**/csvexport-release\n**/import-chrome-release"
-
-    if artifact_name:
-        print(f"  Adding artifact upload: {artifact_name}")
-        job_config["steps"].append(
-            {
-                "name": "Upload artifacts",
-                "uses": "actions/upload-artifact@v4",
-                "with": {"name": artifact_name, "path": artifact_path},
-            }
-        )
+        # tracy uses ${{ github.sha }} to pass git ref to cmake
+        # luckily, cmake calls "git log <ref>" so we can just pass the tag
+        if "run" in step and "${{ github.sha }}" in step["run"]:
+            step["run"] = step["run"].replace("${{ github.sha }}", tracy_tag)
 
 
 def generate_combined_workflow(workflows, tracy_tag):
@@ -165,7 +123,6 @@ def generate_combined_workflow(workflows, tracy_tag):
             for job_name, job_config in build_wf["jobs"].items():
                 print(f"  Adding job: tracy-{job_name}")
                 modify_job_checkouts(job_config, tracy_tag)
-                add_artifact_upload(job_config, job_name)
                 combined["jobs"][f"tracy-{job_name}"] = job_config
 
     # Process linux.yml
@@ -178,7 +135,6 @@ def generate_combined_workflow(workflows, tracy_tag):
             for job_name, job_config in linux_wf["jobs"].items():
                 print(f"  Adding job: tracy-linux-{job_name}")
                 modify_job_checkouts(job_config, tracy_tag)
-                add_artifact_upload(job_config, f"linux-{job_name}")
                 combined["jobs"][f"tracy-linux-{job_name}"] = job_config
 
     # Add release job
