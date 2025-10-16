@@ -42,3 +42,4 @@ create-release:
         *.zip
         *.tar.gz
       fail_on_unmatched_files: true
+      overwrite: true
