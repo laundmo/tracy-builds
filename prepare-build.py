@@ -24,6 +24,7 @@ import subprocess
 import yaml
 import requests
 from pathlib import Path
+import time
 import argparse
 
 
@@ -149,18 +150,8 @@ def generate_combined_workflow(workflows, tracy_tag):
 
     combined = {
         "name": "Combined Tracy Build",
-        "on": {
-            "workflow_dispatch": {
-                "inputs": {
-                    "tracy_tag": {
-                        "description": "Tracy tag",
-                        "required": False,
-                        "type": "string",
-                        "default": tracy_tag,
-                    }
-                }
-            }
-        },
+        "on": {"push": {"tags": ["v*"]}},
+        "permissions": {"contents": "write"},
         "jobs": {},
     }
 
@@ -250,10 +241,28 @@ def commit_and_push(branch, tracy_tag, push=True):
     )
 
     if push:
+        existing_tag = run_command(
+            ["git", "tag", "-l", tracy_tag], capture=True, check=False
+        )
+        if existing_tag:
+            print(f"Local tag {tracy_tag} exists, deleting...")
+            run_command(["git", "tag", "-d", tracy_tag])
+        remote_tag = run_command(
+            ["git", "ls-remote", "--tags", "origin", tracy_tag],
+            capture=True,
+            check=False,
+        )
+        if remote_tag:
+            print(f"Remote tag {tracy_tag} exists, deleting...")
+            run_command(["git", "push", "origin", "--delete", tracy_tag], check=False)
+
         print("\n=== Pushing to remote ===")
-        remote = run_command(["git", "remote", "-v"], capture=True)
-        print(remote)
         run_command(["git", "push", "origin", branch])
+        time.sleep(1)
+
+        print(f"\n=== Tagging commit as {tracy_tag} ===")
+        run_command(["git", "tag", tracy_tag])
+        run_command(["git", "push", "origin", tracy_tag])
     else:
         print("\n=== Skipping push (--no-push specified) ===")
         print(f"To push manually: git push origin {branch}")
@@ -328,12 +337,6 @@ def main():
         print(f"{'=' * 60}")
         print(f"Branch: {branch}")
         print(f"Combined workflow: {combined_path}")
-
-        if not args.no_push:
-            print("\nTo trigger the build:")
-            print(
-                f"  gh workflow run build-combined.yml --ref {branch} -f tracy_tag={tracy_tag}"
-            )
 
         return 0
 

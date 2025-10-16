@@ -33,12 +33,3 @@ jobs:
           PYTHONUNBUFFERED: 1
         run: |
           uv run prepare-build.py "${{ inputs.tracy_tag }}"
-          sleep 25
-
-      - name: Dispatch build workflow
-        uses: benc-uk/workflow-dispatch@v1
-        with:
-          workflow: build-combined.yml
-          ref: build-${{ inputs.tracy_tag }}
-          token: ${{ steps.generate-token.outputs.token }}
-          inputs: '{"tracy_tag": "${{ inputs.tracy_tag }}"}'
