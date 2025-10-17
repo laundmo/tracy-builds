@@ -152,12 +152,13 @@ def modify_job(job_config, tracy_tag, file):
         job_config["strategy"]["matrix"] = {}
 
     job_config["strategy"]["matrix"]["build_flags"] = [
-        {"cmake": "-DTRACY_LTO=ON", "meson": "", "postfix": "-lto"},
-        {
-            "cmake": "-DTRACY_ON_DEMAND=ON -DTRACY_LTO=ON",
-            "meson": "-Dtracy:on_demand=true",
-            "postfix": "-ondemand-lto",
-        },
+        {"cmake": "-DTRACY_LTO=ON", "meson": "", "postfix": ""},
+        # TODO: likely broken
+        # {
+        #     "cmake": "-DTRACY_ON_DEMAND=ON -DTRACY_LTO=ON",
+        #     "meson": "-Dtracy:on_demand=true",
+        #     "postfix": "-ondemand",
+        # },
     ]
 
     if file == "linux.yml":
@@ -165,7 +166,7 @@ def modify_job(job_config, tracy_tag, file):
             {
                 "cmake": "-DLEGACY=ON -DTRACY_LTO=ON",
                 "meson": "",
-                "postfix": "-x11-lto",
+                "postfix": "-x11",
             }
         )
 
