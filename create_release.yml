@@ -13,19 +13,27 @@ create-release:
     run: ls -R artifacts/
   - name: Package all artifacts
     run: |-
+      STRIP_KEYWORDS=("latest" "15" "arch")
       cd artifacts
       for dir in */; do
         dirname="${dir%/}"
         echo "Processing: $dirname"
         
+        clean_name="$dirname"
+        for keyword in "${STRIP_KEYWORDS[@]}"; do
+          clean_name="${clean_name//$keyword/}"
+        done
+        
+        clean_name=$(echo "$clean_name" | sed 's/--*/-/g; s/^-//; s/-$//')
+
         case "$dirname" in
           windows-*)
-            (cd "$dirname" && zip -r "../../tracy-${dirname}.zip" ./* )
-            echo "Created tracy-${dirname}.zip"
+            (cd "$dirname" && zip -r "../../tracy-${clean_name}.zip" ./* )
+            echo "Created tracy-${clean_name}.zip"
             ;;
           *)
-            tar czf "../tracy-${dirname}.tar.gz" "$dirname"
-            echo "Created tracy-${dirname}.tar.gz"
+            tar czf "../tracy-${clean_name}.tar.gz" "$dirname"
+            echo "Created tracy-${clean_name}.tar.gz"
             ;;
         esac
       done
